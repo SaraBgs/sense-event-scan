@@ -17,60 +17,63 @@ import * as Haptics from "expo-haptics";
 // Simulation locale de la base de données
 const localDatabase = {
   "123456789": {
-    nomprenom: "Jean Dupont",
+    nom: "Dupont",
+    prenom: "Jean",
     societe: "Sense Conseil",
     fonction: "Directeur Marketing",
     email: "jean.dupont@senseconseil.com",
     tel: "0123456789",
     event_evenement_id: 1,
-    fk_event_cat_participant_id: 1
+    fk_event_cat_participant_id: 1,
   },
   "987654321": {
-    nomprenom: "Marie Martin",
+    nom: "Martin",
+    prenom: "Marie",
     societe: "NTIC Mag",
     fonction: "Rédactrice en chef",
     email: "marie.martin@nticmag.com",
     tel: "0987654321",
     event_evenement_id: 1,
-    fk_event_cat_participant_id: 1
+    fk_event_cat_participant_id: 1,
   },
   "ABCDEF123": {
-    nomprenom: "Ahmed Bensaid",
+    nom: "Bensaid",
+    prenom: "Ahmed",
     societe: "GIE Monétique",
     fonction: "Responsable IT",
     email: "ahmed.bensaid@giemonetique.dz",
     tel: "0550123456",
     event_evenement_id: 12,
-    fk_event_cat_participant_id: 1
-  }
+    fk_event_cat_participant_id: 1,
+  },
 };
 
 // Fonctions de validation
 const validateEmail = (email) => {
-  if (!email) return true; // Optionnel
+  if (!email) return false; // Email obligatoire
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
 const validatePhone = (phone) => {
-  if (!phone) return true; // Optionnel
+  if (!phone) return false; // Téléphone obligatoire
   const phoneRegex = /^0[5-7][0-9]{8}$/;
   return phoneRegex.test(phone);
 };
 
-const validateName = (name) => {
-  return name && name.trim().length >= 2;
+const validateText = (value) => {
+  return value && value.trim().length >= 2;
 };
 
 // Simulation de vérification
 async function verifyParticipant(scannedData) {
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 500));
   const participant = localDatabase[scannedData];
-  
+
   if (participant) {
     return {
       found: true,
-      participant: participant
+      participant: participant,
     };
   } else {
     return { found: false };
@@ -79,15 +82,15 @@ async function verifyParticipant(scannedData) {
 
 // Simulation d'ajout
 async function addParticipant(qrCode, participantData) {
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
+  await new Promise((resolve) => setTimeout(resolve, 800));
+
   localDatabase[qrCode] = {
     ...participantData,
     event_evenement_id: 1,
     fk_event_cat_participant_id: 1,
-    create: new Date().toISOString()
+    create: new Date().toISOString(),
   };
-  
+
   return { success: true, message: "Participant ajouté avec succès" };
 }
 
@@ -101,7 +104,8 @@ export default function App() {
 
   // États du formulaire d'ajout
   const [formData, setFormData] = useState({
-    nomprenom: "",
+    nom: "",
+    prenom: "",
     societe: "",
     fonction: "",
     email: "",
@@ -109,7 +113,8 @@ export default function App() {
   });
 
   const [formErrors, setFormErrors] = useState({
-    nomprenom: "",
+    nom: "",
+    prenom: "",
     email: "",
     tel: "",
   });
@@ -124,23 +129,27 @@ export default function App() {
 
   const handleBarCodeScanned = async ({ type, data }) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     try {
       const apiResult = await verifyParticipant(data);
-      
+
       if (apiResult.found) {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success
+        );
         setResult({
           found: true,
           participant: apiResult.participant,
-          scannedData: data
+          scannedData: data,
         });
         setScreen("welcome");
       } else {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Error
+        );
         setResult({
           found: false,
-          scannedData: data
+          scannedData: data,
         });
         setScreen("accessDenied");
       }
@@ -156,43 +165,62 @@ export default function App() {
 
   const validateForm = () => {
     const errors = {
-      nomprenom: validateName(formData.nomprenom) ? "" : "Nom et prénom requis (min 2 caractères)",
-      email: validateEmail(formData.email) ? "" : "Format email invalide (ex: exemple@email.com)",
-      tel: validatePhone(formData.tel) ? "" : "Format téléphone invalide (ex: 0550123456)"
+      nom: validateText(formData.nom)
+        ? ""
+        : "Nom requis (min 2 caractères)",
+      prenom: validateText(formData.prenom)
+        ? ""
+        : "Prénom requis (min 2 caractères)",
+      email: !formData.email
+        ? "Email requis"
+        : validateEmail(formData.email)
+        ? ""
+        : "Format email invalide (ex: exemple@email.com)",
+      tel: !formData.tel
+        ? "Téléphone requis"
+        : validatePhone(formData.tel)
+        ? ""
+        : "Format téléphone invalide (ex: 0550123456)",
     };
-    
+
     setFormErrors(errors);
-    return !errors.nomprenom && !errors.email && !errors.tel;
+    return !errors.nom && !errors.prenom && !errors.email && !errors.tel;
   };
 
   const handleAddParticipant = async () => {
     if (!validateForm()) {
-      Alert.alert("Erreur de validation", "Veuillez corriger les erreurs dans le formulaire");
+      Alert.alert(
+        "Erreur de validation",
+        "Veuillez corriger les erreurs dans le formulaire"
+      );
       return;
     }
 
     try {
       await addParticipant(result.scannedData, formData);
-      Alert.alert(
-        "Succès", 
-        "Participant ajouté avec succès !",
-        [{ text: "OK", onPress: () => {
-          setScreen("home");
-          // Reset du formulaire
-          setFormData({
-            nomprenom: "",
-            societe: "",
-            fonction: "",
-            email: "",
-            tel: "",
-          });
-          setFormErrors({
-            nomprenom: "",
-            email: "",
-            tel: "",
-          });
-        }}]
-      );
+      Alert.alert("Succès", "Participant ajouté avec succès !", [
+        {
+          text: "OK",
+          onPress: () => {
+            setScreen("home");
+            // Reset du formulaire
+            setFormData({
+              nom: "",
+              prenom: "",
+              societe: "",
+              fonction: "",
+              email: "",
+              tel: "",
+            });
+            setFormErrors({
+              nom: "",
+              prenom: "",
+              email: "",
+              tel: "",
+            });
+          },
+        },
+      ]);
     } catch (error) {
       Alert.alert("Erreur", "Impossible d'ajouter le participant");
     }
@@ -203,26 +231,39 @@ export default function App() {
   };
 
   const updateFormField = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
 
     // Validation en temps réel
-    if (field === "email" && value) {
-      setFormErrors(prev => ({
+    if (field === "email") {
+      setFormErrors((prev) => ({
         ...prev,
-        email: validateEmail(value) ? "" : "Format email invalide"
+        email: !value
+          ? "Email requis"
+          : validateEmail(value)
+          ? ""
+          : "Format email invalide",
       }));
-    } else if (field === "tel" && value) {
-      setFormErrors(prev => ({
+    } else if (field === "tel") {
+      setFormErrors((prev) => ({
         ...prev,
-        tel: validatePhone(value) ? "" : "Doit commencer par 0 et avoir 10 chiffres"
+        tel: !value
+          ? "Téléphone requis"
+          : validatePhone(value)
+          ? ""
+          : "Doit commencer par 0 et avoir 10 chiffres",
       }));
-    } else if (field === "nomprenom") {
-      setFormErrors(prev => ({
+    } else if (field === "nom") {
+      setFormErrors((prev) => ({
         ...prev,
-        nomprenom: validateName(value) ? "" : "Nom et prénom requis"
+        nom: validateText(value) ? "" : "Nom requis (min 2 caractères)",
+      }));
+    } else if (field === "prenom") {
+      setFormErrors((prev) => ({
+        ...prev,
+        prenom: validateText(value) ? "" : "Prénom requis (min 2 caractères)",
       }));
     }
   };
@@ -242,18 +283,26 @@ export default function App() {
           Scannez les QR codes de test: {"\n"}
           123456789, 987654321, ABCDEF123
         </Text>
-        <Text style={styles.demoHint}>
-          Mode démo - Base locale simulée
-        </Text>
+        <Text style={styles.demoHint}>Mode démo - Base locale simulée</Text>
       </View>
     );
   }
 
   // Écran Ajouter Participant
   if (screen === "addParticipant") {
+    const isFormValidForButton =
+      formData.nom &&
+      formData.prenom &&
+      formData.email &&
+      formData.tel &&
+      !formErrors.nom &&
+      !formErrors.prenom &&
+      !formErrors.email &&
+      !formErrors.tel;
+
     return (
-      <KeyboardAvoidingView 
-        style={styles.container} 
+      <KeyboardAvoidingView
+        style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView contentContainerStyle={styles.formContainer}>
@@ -263,16 +312,30 @@ export default function App() {
           </Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nom et Prénom *</Text>
+            <Text style={styles.label}>Nom *</Text>
             <TextInput
-              style={[styles.input, formErrors.nomprenom && styles.inputError]}
-              value={formData.nomprenom}
-              onChangeText={(text) => updateFormField("nomprenom", text)}
-              placeholder="Ex: Jean Dupont"
+              style={[styles.input, formErrors.nom && styles.inputError]}
+              value={formData.nom}
+              onChangeText={(text) => updateFormField("nom", text)}
+              placeholder="Ex: Dupont"
               placeholderTextColor="#9ca3af"
             />
-            {formErrors.nomprenom ? (
-              <Text style={styles.errorText}>{formErrors.nomprenom}</Text>
+            {formErrors.nom ? (
+              <Text style={styles.errorText}>{formErrors.nom}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Prénom *</Text>
+            <TextInput
+              style={[styles.input, formErrors.prenom && styles.inputError]}
+              value={formData.prenom}
+              onChangeText={(text) => updateFormField("prenom", text)}
+              placeholder="Ex: Jean"
+              placeholderTextColor="#9ca3af"
+            />
+            {formErrors.prenom ? (
+              <Text style={styles.errorText}>{formErrors.prenom}</Text>
             ) : null}
           </View>
 
@@ -299,7 +362,7 @@ export default function App() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>Email *</Text>
             <TextInput
               style={[styles.input, formErrors.email && styles.inputError]}
               value={formData.email}
@@ -315,7 +378,7 @@ export default function App() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Téléphone</Text>
+            <Text style={styles.label}>Téléphone *</Text>
             <TextInput
               style={[styles.input, formErrors.tel && styles.inputError]}
               value={formData.tel}
@@ -328,7 +391,9 @@ export default function App() {
             {formErrors.tel ? (
               <Text style={styles.errorText}>{formErrors.tel}</Text>
             ) : (
-              <Text style={styles.hintText}>Doit commencer par 0 et avoir 10 chiffres</Text>
+              <Text style={styles.hintText}>
+                Doit commencer par 0 et avoir 10 chiffres
+              </Text>
             )}
           </View>
 
@@ -340,9 +405,12 @@ export default function App() {
               <Text style={styles.secondaryBtnText}>Annuler</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.primaryBtn, !formData.nomprenom && styles.disabledBtn]}
+              style={[
+                styles.primaryBtn,
+                !isFormValidForButton && styles.disabledBtn,
+              ]}
               onPress={handleAddParticipant}
-              disabled={!formData.nomprenom}
+              disabled={!isFormValidForButton}
             >
               <Text style={styles.primaryBtnText}>Ajouter</Text>
             </TouchableOpacity>
@@ -360,7 +428,7 @@ export default function App() {
           <Text style={styles.resultTitle}>✅ Accès Autorisé</Text>
           <Text style={styles.welcomeText}>Bienvenue</Text>
           <Text style={styles.participantName}>
-            {result.participant.nomprenom}
+            {result.participant.prenom} {result.participant.nom}
           </Text>
           {result.participant.societe && (
             <Text style={styles.participantInfo}>
@@ -372,12 +440,9 @@ export default function App() {
               {result.participant.fonction}
             </Text>
           )}
-          
+
           <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.secondaryBtn}
-              onPress={resetScan}
-            >
+            <TouchableOpacity style={styles.secondaryBtn} onPress={resetScan}>
               <Text style={styles.secondaryBtnText}>Scanner Suivant</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -398,18 +463,13 @@ export default function App() {
       <View style={styles.resultScreen}>
         <View style={[styles.resultBox, styles.koBox]}>
           <Text style={styles.resultTitle}>❌ Accès Refusé</Text>
-          <Text style={styles.deniedText}>
-            Code: {result.scannedData}
-          </Text>
+          <Text style={styles.deniedText}>Code: {result.scannedData}</Text>
           <Text style={styles.deniedText}>
             Participant non trouvé dans la base
           </Text>
-          
+
           <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.secondaryBtn}
-              onPress={resetScan}
-            >
+            <TouchableOpacity style={styles.secondaryBtn} onPress={resetScan}>
               <Text style={styles.secondaryBtnText}>Scanner Suivant</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -432,7 +492,7 @@ export default function App() {
       </View>
     );
   }
-  
+
   if (!hasPermission.granted) {
     return (
       <View style={styles.center}>
@@ -454,12 +514,20 @@ export default function App() {
         onBarcodeScanned={handleBarCodeScanned}
         barcodeScannerSettings={{
           barcodeTypes: [
-            "qr", "ean13", "ean8", "code128", "code39", 
-            "upc_a", "upc_e", "pdf417", "datamatrix", "aztec"
+            "qr",
+            "ean13",
+            "ean8",
+            "code128",
+            "code39",
+            "upc_a",
+            "upc_e",
+            "pdf417",
+            "datamatrix",
+            "aztec",
           ],
         }}
       />
-      
+
       {/* Overlay */}
       <View style={styles.overlay}>
         <View style={styles.row}>
@@ -556,11 +624,11 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
-  title: { 
-    fontSize: 24, 
-    fontWeight: "700", 
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
     marginBottom: 24,
-    color: "#111827"
+    color: "#111827",
   },
   scanBtn: {
     backgroundColor: "#111827",
@@ -573,14 +641,14 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  scanBtnText: { 
-    color: "#fff", 
-    fontSize: 18, 
-    fontWeight: "600" 
+  scanBtnText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
   },
-  hint: { 
-    marginTop: 16, 
-    color: "#6b7280", 
+  hint: {
+    marginTop: 16,
+    color: "#6b7280",
     textAlign: "center",
     lineHeight: 20,
   },
@@ -597,15 +665,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  center: { 
-    flex: 1, 
-    alignItems: "center", 
+  center: {
+    flex: 1,
+    alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#f8f9fa",
   },
-  resultScreen: { 
-    flex: 1, 
-    alignItems: "center", 
+  resultScreen: {
+    flex: 1,
+    alignItems: "center",
     justifyContent: "center",
     padding: 24,
     backgroundColor: "#f8f9fa",
@@ -625,13 +693,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 10,
   },
-  overlayText: { 
+  overlayText: {
     color: "white",
     fontSize: 14,
   },
 
-  resultBox: { 
-    padding: 24, 
+  resultBox: {
+    padding: 24,
     borderRadius: 16,
     alignItems: "center",
     width: "100%",
@@ -643,13 +711,13 @@ const styles = StyleSheet.create({
   },
   okBox: { backgroundColor: "#16a34a" },
   koBox: { backgroundColor: "#dc2626" },
-  resultTitle: { 
-    color: "white", 
-    fontWeight: "700", 
+  resultTitle: {
+    color: "white",
+    fontWeight: "700",
     fontSize: 20,
     marginBottom: 16,
   },
-  
+
   welcomeText: {
     color: "white",
     fontSize: 24,
@@ -695,8 +763,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  primaryBtnText: { 
-    color: "white", 
+  primaryBtnText: {
+    color: "white",
     fontWeight: "600",
     fontSize: 14,
   },
@@ -714,13 +782,13 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  secondaryBtnText: { 
-    color: "#111827", 
+  secondaryBtnText: {
+    color: "#111827",
     fontWeight: "600",
     fontSize: 14,
   },
-  link: { 
-    color: "white", 
+  link: {
+    color: "white",
     textDecorationLine: "underline",
     fontSize: 16,
   },
